@@ -15,8 +15,6 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
 (function() {
     'use strict';
 
-    var DEBUG = false;
-
     var HOLIDAY_FGCOLOR  = "red";
     var HOLIDAY_BGCOLOR  = "mistyrose";
     var SUNDAY_BGCOLOR   = "mistyrose";
@@ -92,7 +90,6 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
     function onDOMSubtreeModifiedAsync() {
         showHoliday();
         addPreferenceButton();
-        addDebugCheckbox();
         _loading = false;
     }
 
@@ -146,8 +143,6 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             var span_day = td.querySelector("span");
             var ymd = currentMonth.createDate(span_day.textContent, !td.classList.contains("st-dtitle-nonmonth"));
             var ymdstr = date2str(ymd);
-
-            showDebugDate(td, span_day, ymdstr);
 
             if(0 < (td.querySelectorAll("span.holiday") || []).length) return false;
 
@@ -236,58 +231,56 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
                     element[key][key2] = attributes[key][key2];
             }
             else {
-                element[key] = attributes[key];
+                element.setAttribute(key, attributes[key]);
             }
         }
         element.textContent = textContent;
         return element;
     }
 
-    function addDebugCheckbox() {
-        var checkbox = document.getElementById('chkDebug');
-        if( checkbox ) return;
-
-        checkbox = createElement("input", {id:"chkDebug", type:"checkbox", style:{marginLeft:"10px"}, checked:DEBUG});
-        checkbox.addEventListener("click", function(){
-            DEBUG = !DEBUG;
-            console.log("DEBUG =", DEBUG);
-            //(デバッグ用)
-            Array.prototype.some.call($$("td.st-dtitle"), function(td) {
-                //日付の取得
-                var span_day = td.querySelector("span");
-                var ymd = currentMonth.createDate(span_day.textContent, !td.classList.contains("st-dtitle-nonmonth"));
-                var ymdstr = date2str(ymd);
-                showDebugDate(td, span_day, ymdstr);
-            });
-        });
-
-        var parent = document.querySelector("div[id^='currentDate:']");
-        parent.appendChild(checkbox);
-
-        var label = createElement("label", {htmlFor:checkbox.id}, "デバッグ");
-        parent.appendChild(label);
-    }
-
     function addPreferenceButton() {
-        var btn = document.getElementById('btnPref');
-        if(btn)return;
+        //メニューが未作成時は何もしない
+        var menu = document.querySelector("body > div.goog-menu.goog-menu-vertical");
+        if( !menu )return;
 
-        btn = createElement("input", { id:"btnPref", type:"button", style:{ marginLeft:"10px" }, value:"設定" });
-        btn.addEventListener("click", function() {
-            var dialogback = document.getElementById("dialogprefback");
-            if(dialogback)return;
+        //メニューアイテムを追加済の場合は何もしない
+        var z = document.getElementById(":z");
+        if(z)return;
+
+        //仕切りを追加
+        var separator = createElement("div", {class:"goog-menuseparator", "aria-disabled":"true", style:"-webkit-user-select:none", role:"separator", id:":y"});
+        menu.appendChild(separator);
+
+        //メニューアイテムを追加
+        var menuitemp = createElement("div", {class:"goog-menuitem", role:"menuitem", style:"-webkit-user-select: none", id:":z"});
+        menuitemp.addEventListener("mouseover", function() { menuitemp.classList.add("goog-menuitem-highlight"); });
+        menuitemp.addEventListener("mouseout", function() { menuitemp.classList.remove("goog-menuitem-highlight"); });
+        menu.appendChild(menuitemp);
+        //メニューアイテム(テキスト)を追加
+        var menuitemc = createElement("div", {class:"goog-menuitem-content", style:"-webkit-user-select: none"}, "祝日設定");
+        menuitemp.appendChild(menuitemc);
+
+        menuitemp.addEventListener("click", function() {
+            //メニューを閉じる
+            var menubtn = document.getElementById("mg-settings");
+            menubtn.classList.remove("goog-imageless-button-hover");
+            menubtn.classList.remove("goog-imageless-button-focused");
+            menubtn.classList.remove("goog-imageless-button-open");
+            menu.style.display = "none";
 
             var body = document.getElementsByTagName('body')[0];
 
-            dialogback = createElement("div", {id:"dialogprefback", style:{ position:"absolute", top:"0px", left:"0px", height:getBrowserHeight()+"px", width:"100%", backgroundColor:"black", opacity:"0.5" }});
+            var screenSize = getScreenSize();
+            //背景を追加
+            var dialogback = createElement("div", {id:"dialogprefback", style:{ position:"absolute", top:"0px", left:"0px", height:screenSize.height+"px", width:"100%", backgroundColor:"black", opacity:"0.5" }});
             body.appendChild(dialogback);
 
-            var dialog = createElement("div", {id:"dialogpref", style:{ position:"absolute", top:"100px", left:"100px", height:"90px", width:"450px", border:"1px solid black", backgroundColor:"white", padding:"15px" }});
+            //ダイアログを追加
+            var dialog = createElement("div", {id:"dialogpref", style:{ position:"absolute", height:"90px", width:"450px", top:(screenSize.height-90)/2 + "px", left:(screenSize.width-450)/2 +"px", border:"1px solid black", backgroundColor:"white", padding:"15px" }});
             body.appendChild(dialog);
 
             dialogback.addEventListener("click", function() {
-                body.removeChild(dialogback);
-                body.removeChild(dialog);
+                closePrefence();
             });
 
             var msg = createElement("div", {style:{marginBottom:"15px"}}, "Google API キーを設定してください。");
@@ -305,45 +298,40 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             btnOK.addEventListener("click", function() {
                 localStorage.setItem("google_api_key_calendar", textbox.value);
                 location.reload();
-                body.removeChild(dialogback);
-                body.removeChild(dialog);
+                closePrefence();
             });
             btnarea.appendChild(btnOK);
 
             var btnCancel = createElement("input", {id:"btnCancel", type:"button", value:"Cancel", style:{width:"60px", height:"25px"}});
             btnCancel.addEventListener("click", function() {
-                body.removeChild(dialogback);
-                body.removeChild(dialog);
+                closePrefence();
             });
             btnarea.appendChild(btnCancel);
 
-            console.log("btnPref.click");
+            function closePrefence() {
+                body.removeChild(dialogback);
+                body.removeChild(dialog);
+            }
         });
-
-        var parent = document.querySelector("div[id^='currentDate:']");
-        parent.appendChild(btn);
     }
 
-    function showDebugDate(td, span_day, ymdstr) {
-        var span_dates = td.getElementsByClassName("holiday_debug") || [];
-        if(0 < span_dates.length)
-            td.removeChild(span_dates[0]);
-        if( DEBUG ) {
-            var span_date = createElement("span", {className:"holiday_debug"}, "(" + ymdstr + ")");
-            td.insertBefore(span_date, span_day.nextSibling);
+    // 画面サイズを取得
+    function getScreenSize() {
+        var h = 0;
+        var w = 0;
+        if ( window.innerHeight && window.innerWidth ) {
+            h = window.innerHeight;
+            w = window.innerWidth;
         }
-    }
-
-    // 画面の高さを取得
-    function getBrowserHeight() {
-        if ( window.innerHeight ) {
-            return window.innerHeight;
-        }
-        else if ( document.documentElement && document.documentElement.clientHeight !== 0 ) {
-            return document.documentElement.clientHeight;
+        else if ( document.documentElement && document.documentElement.clientHeight !== 0 && document.documentElement.clientWidth !== 0 ) {
+            h = document.documentElement.clientHeight;
+            w = document.documentElement.clientWidth;
         }
         else if ( document.body ) {
-            return document.body.clientHeight;
+            h = document.body.clientHeight;
+            w = document.body.clientWidth;
         }
-        return 0;
-    }})();
+        return { height:h, width:w };
+    }
+
+})();
