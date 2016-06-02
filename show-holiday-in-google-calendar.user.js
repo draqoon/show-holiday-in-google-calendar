@@ -89,7 +89,7 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
     }, false);
     function onDOMSubtreeModifiedAsync() {
         showHoliday();
-        addPreferenceButton();
+        addPreferenceMenuitem();
         _loading = false;
     }
 
@@ -222,23 +222,8 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
         });
     }
 
-    function createElement(tagName, attributes, textContent) {
-        var element = document.createElement(tagName);
-        for( var key in attributes ) {
-            if( (attributes[key] instanceof Object) && !(attributes[key] instanceof Array) ) {
-                element[key] = {};
-                for( var key2 in attributes[key] )
-                    element[key][key2] = attributes[key][key2];
-            }
-            else {
-                element.setAttribute(key, attributes[key]);
-            }
-        }
-        element.textContent = textContent;
-        return element;
-    }
-
-    function addPreferenceButton() {
+    //設定メニューを追加
+    function addPreferenceMenuitem() {
         //メニューが未作成時は何もしない
         var menu = document.querySelector("body > div.goog-menu.goog-menu-vertical");
         if( !menu )return;
@@ -313,6 +298,23 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
                 body.removeChild(dialog);
             }
         });
+    }
+
+    //エレメントを作成
+    function createElement(tagName, attributes, textContent) {
+        var element = document.createElement(tagName);
+        for( var key in attributes ) {
+            if( (attributes[key] instanceof Object) && !(attributes[key] instanceof Array) ) {
+                element[key] = {};
+                for( var key2 in attributes[key] )
+                    element[key][key2] = attributes[key][key2];
+            }
+            else {
+                element.setAttribute(key, attributes[key]);
+            }
+        }
+        element.textContent = textContent;
+        return element;
     }
 
     // 画面サイズを取得
