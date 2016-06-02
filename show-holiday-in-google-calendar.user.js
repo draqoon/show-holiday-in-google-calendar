@@ -110,7 +110,6 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
         // カレンダー描画時に複数回DOMが更新されるため、キャッシュしないと無駄なAPIコールが発生する
         if( currentMonth.key in holidaysCache ) {
             printHoliday();
-            printHolidayMini();
             return;
         }
 
@@ -137,6 +136,7 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
 
     //土日を描画
     function printWeenend() {
+        //メインカレンダー
         Array.prototype.some.call($$("td.st-dtitle"), function(td) {
             //日付の取得
             var span_day = td.querySelector("span");
@@ -160,6 +160,23 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
                 }
             }
         });
+
+        //ミニカレンダー
+        Array.prototype.some.call($$("#dp_0_tbl td.dp-cell"), function(td) {
+            if( td.classList.contains("dp-dayh") ) return false;
+
+            //日付の取得
+            var ymd = currentMonth.createDate(td.textContent, !td.classList.contains("dp-offmonth") && !td.classList.contains("dp-offmonth-selected"));
+            var ymdstr = date2str(ymd);
+
+            var dayOfWeek = ymd.getDay();
+            if( dayOfWeek === 0 ) { //日曜日
+                td.style.backgroundColor = SUNDAY_BGCOLOR;
+            }
+            else if( dayOfWeek === 6 ) { //土曜日
+                td.style.backgroundColor = SATURDAY_BGCOLOR;
+            }
+        });
     }
 
     //----------------------------------------------------------------
@@ -168,6 +185,7 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
     function printHoliday() {
         var holidays = holidaysCache[currentMonth.key];
 
+        //メインカレンダー
         Array.prototype.some.call($$("td.st-dtitle"), function(td) {
             //日付の取得
             var span_day = td.querySelector("span");
@@ -195,14 +213,8 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
                 }
             });
         });
-    }
 
-    //----------------------------------------------------------------
-    // 祝日と土日を描画(ミニカレンダー)
-    //----------------------------------------------------------------
-    function printHolidayMini() {
-        var holidays = holidaysCache[currentMonth.key];
-
+        //ミニカレンダー
         Array.prototype.some.call($$("#dp_0_tbl td.dp-cell"), function(td) {
             if( td.classList.contains("dp-dayh") ) return false;
 
@@ -214,22 +226,13 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             var is_holiday = holidays.items.some(function(holiday) {
                 if( holiday.start.date == ymdstr ) {
                     td.title = holiday.summary;
+                    td.style.backgroundColor = HOLIDAY_BGCOLOR;
                     return true;
                 }
                 else {
                     return false;
                 }
             });
-            var dayOfWeek = ymd.getDay();
-            if( is_holiday ) { //祝日
-                td.style.backgroundColor = HOLIDAY_BGCOLOR;
-            }
-            else if( dayOfWeek === 0 ) { //日曜日
-                td.style.backgroundColor = SUNDAY_BGCOLOR;
-            }
-            else if( dayOfWeek === 6 ) { //土曜日
-                td.style.backgroundColor = SATURDAY_BGCOLOR;
-            }
         });
     }
 
@@ -284,9 +287,10 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
 
             var api_key = localStorage.getItem("google_api_key_calendar");
             var textbox = createElement("input", {id:"txtGoogleApiKey", type:"textbox", size:45, value:api_key ? api_key : ""});
-            var label = createElement("label", {}, "Google API キー");
+            var label = createElement("label", {"for":textbox.id}, "Google API キー");
             dialog.appendChild(label);
             dialog.appendChild(textbox);
+            textbox.select();textbox.focus();
 
             var btnarea = createElement("div", {id:"btnarea", style:{position:"absolute", right:"15px", bottom:"15px"}});
             dialog.appendChild(btnarea);
