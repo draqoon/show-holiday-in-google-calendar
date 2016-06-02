@@ -88,6 +88,11 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
         setTimeout(onDOMSubtreeModifiedAsync, 10);
     }, false);
     function onDOMSubtreeModifiedAsync() {
+        // 表示中の年月(yyyy年m月)
+        var key = $("dp_0_cur").textContent;
+        currentMonth = new CurrentMonth( key );
+
+        printWeenend();
         showHoliday();
         addPreferenceMenuitem();
         _loading = false;
@@ -99,13 +104,11 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
     var currentMonth;
     var holidaysCache = {};
     function showHoliday() {
-        // 表示中の年月(yyyy年m月)
-        var key = $("dp_0_cur").textContent;
+        if( !GOOGLE_API_KEY) return;
 
         // 祝日を取得済の月はキャッシュから取得後、祝日描画
         // カレンダー描画時に複数回DOMが更新されるため、キャッシュしないと無駄なAPIコールが発生する
-        currentMonth = new CurrentMonth( key );
-        if( key in holidaysCache ) {
+        if( currentMonth.key in holidaysCache ) {
             printHoliday();
             printHolidayMini();
             return;
@@ -132,8 +135,35 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
         });
     }
 
+    //土日を描画
+    function printWeenend() {
+        Array.prototype.some.call($$("td.st-dtitle"), function(td) {
+            //日付の取得
+            var span_day = td.querySelector("span");
+            var ymd = currentMonth.createDate(span_day.textContent, !td.classList.contains("st-dtitle-nonmonth"));
+
+            //枠の背景色の着色
+            var dayOfWeek = ymd.getDay();
+            if( dayOfWeek === 0 || dayOfWeek === 6 ) {
+                //左から何列目か
+                var col_index = Array.prototype.indexOf.call(td.parentNode.childNodes, td);
+                //枠テーブルのセルを検索
+                var xpathresult = document.evaluate("../../../../table[@class='st-bg-table']/tbody/tr/td[" + (col_index + 1) + "]", td, null, XPathResult.FIRST_ORDERED_NODE_TYPE, xpathresult);
+                var td_box = xpathresult.singleNodeValue;
+                if( dayOfWeek === 0 ) { //日曜日
+                    td_box.style.backgroundColor = SUNDAY_BGCOLOR;
+                    td.style.backgroundColor = SUNDAY_BGCOLOR;
+                }
+                else if( dayOfWeek === 6 ) { //土曜日
+                    td_box.style.backgroundColor = SATURDAY_BGCOLOR;
+                    td.style.backgroundColor = SATURDAY_BGCOLOR;
+                }
+            }
+        });
+    }
+
     //----------------------------------------------------------------
-    // 祝日と土日を描画
+    // 祝日を描画
     //----------------------------------------------------------------
     function printHoliday() {
         var holidays = holidaysCache[currentMonth.key];
@@ -150,39 +180,20 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             var is_holiday = holidays.items.some(function(holiday) {
                 if( holiday.start.date == ymdstr ) {
                     //祝日の場合は、祝日名を設定
-                    var span_holiday = createElement("span", {className:"holiday", style:{color:HOLIDAY_FGCOLOR, paddingLeft:"10px"}}, holiday.summary);
+                    var span_holiday = createElement("span", {class:"holiday", style:{color:HOLIDAY_FGCOLOR, paddingLeft:"10px"}}, holiday.summary);
                     td.appendChild(span_holiday);
-                    return true;
-                }
-            });
 
-            try {
-                //枠の背景色の着色
-                var dayOfWeek = ymd.getDay();
-                if( is_holiday || dayOfWeek === 0 || dayOfWeek === 6 ) {
                     //左から何列目か
                     var col_index = Array.prototype.indexOf.call(td.parentNode.childNodes, td);
                     //枠テーブルのセルを検索
                     var xpathresult = document.evaluate("../../../../table[@class='st-bg-table']/tbody/tr/td[" + (col_index + 1) + "]", td, null, XPathResult.FIRST_ORDERED_NODE_TYPE, xpathresult);
                     var td_box = xpathresult.singleNodeValue;
-                    if( is_holiday ) { //祝日
-                        td_box.style.backgroundColor = HOLIDAY_BGCOLOR;
-                        td.style.backgroundColor = HOLIDAY_BGCOLOR;
-                    }
-                    else if( dayOfWeek === 0 ) { //日曜日
-                        td_box.style.backgroundColor = SUNDAY_BGCOLOR;
-                        td.style.backgroundColor = SUNDAY_BGCOLOR;
-                    }
-                    else if( dayOfWeek === 6 ) { //土曜日
-                        td_box.style.backgroundColor = SATURDAY_BGCOLOR;
-                        td.style.backgroundColor = SATURDAY_BGCOLOR;
-                    }
-                }
-            }
-            catch(ex){
-                console.log(ex);
-            }
+                    td_box.style.backgroundColor = HOLIDAY_BGCOLOR;
+                    td.style.backgroundColor = HOLIDAY_BGCOLOR;
 
+                    return false;
+                }
+            });
         });
     }
 
@@ -257,11 +268,11 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
 
             var screenSize = getScreenSize();
             //背景を追加
-            var dialogback = createElement("div", {id:"dialogprefback", style:{ position:"absolute", top:"0px", left:"0px", height:screenSize.height+"px", width:"100%", backgroundColor:"black", opacity:"0.5" }});
+            var dialogback = createElement("div", {id:"dialogprefback", style:{ position:"absolute", top:"0px", left:"0px", height:screenSize.height+"px", width:"100%", backgroundColor:"black", opacity:"0.4", "z-index":999 }});
             body.appendChild(dialogback);
 
             //ダイアログを追加
-            var dialog = createElement("div", {id:"dialogpref", style:{ position:"absolute", height:"90px", width:"450px", top:(screenSize.height-90)/2 + "px", left:(screenSize.width-450)/2 +"px", border:"1px solid black", backgroundColor:"white", padding:"15px" }});
+            var dialog = createElement("div", {id:"dialogpref", style:{ position:"absolute", height:"90px", width:"450px", top:(screenSize.height-90)/2 + "px", left:(screenSize.width-450)/2 +"px", border:"1px solid black", backgroundColor:"white", padding:"15px", "z-index":1000 }});
             body.appendChild(dialog);
 
             dialogback.addEventListener("click", function() {
@@ -271,8 +282,9 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             var msg = createElement("div", {style:{marginBottom:"15px"}}, "Google API キーを設定してください。");
             dialog.appendChild(msg);
 
-            var textbox = createElement("input", {id:"txtGoogleApiKey", type:"textbox", size:45, value:localStorage.getItem("google_api_key_calendar")});
-            var label = createElement("label", {htmlFor:textbox.id}, "Google API キー");
+            var api_key = localStorage.getItem("google_api_key_calendar");
+            var textbox = createElement("input", {id:"txtGoogleApiKey", type:"textbox", size:45, value:api_key ? api_key : ""});
+            var label = createElement("label", {}, "Google API キー");
             dialog.appendChild(label);
             dialog.appendChild(textbox);
 
@@ -281,7 +293,8 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
 
             var btnOK = createElement("input", {id:"btnOK", type:"button", value:"OK", style:{marginRight:"5px", width:"60px", height:"25px"}});
             btnOK.addEventListener("click", function() {
-                localStorage.setItem("google_api_key_calendar", textbox.value);
+                if(textbox.value) localStorage.setItem("google_api_key_calendar", textbox.value);
+                else              localStorage.removeItem("google_api_key_calendar");
                 location.reload();
                 closePrefence();
             });
