@@ -195,7 +195,7 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             if(0 < (td.querySelectorAll("span.holiday") || []).length) return false;
 
             //祝日の行の背景色変更
-            var is_holiday = holidays.items.some(function(holiday) {
+            holidays.items.forEach(function(holiday) {
                 if( holiday.start.date == ymdstr ) {
                     //祝日の場合は、祝日名を設定
                     var span_holiday = createElement("span", {class:"holiday", style:{color:HOLIDAY_FGCOLOR, paddingLeft:"10px"}}, holiday.summary);
@@ -209,7 +209,7 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
                     td_box.style.backgroundColor = HOLIDAY_BGCOLOR;
                     td.style.backgroundColor = HOLIDAY_BGCOLOR;
 
-                    return false;
+                    return;
                 }
             });
         });
@@ -223,14 +223,11 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             var ymdstr = date2str(ymd);
 
             //祝日の行の背景色変更
-            var is_holiday = holidays.items.some(function(holiday) {
+            holidays.items.forEach(function(holiday) {
                 if( holiday.start.date == ymdstr ) {
                     td.title = holiday.summary;
                     td.style.backgroundColor = HOLIDAY_BGCOLOR;
-                    return true;
-                }
-                else {
-                    return false;
+                    return;
                 }
             });
         });
