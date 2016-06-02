@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         show-holiday-in-google-calendar
 // @namespace    https://calendar.google.com/calendar/render
-// @version      1.0
+// @version      0.1
 // @description  Show Holiday in Google Calendar
 // @author       Tatsuo Sanno
 // @match        https://calendar.google.com/calendar/render*
@@ -274,48 +274,37 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
 
         btn = createElement("input", { id:"btnPref", type:"button", style:{ marginLeft:"10px" }, value:"設定" });
         btn.addEventListener("click", function() {
-            var dialogback = document.getElementById("dialogprefback");
-            if(dialogback)return;
+            var box = document.getElementById("prefbox");
+            if(box)return;
 
             var body = document.getElementsByTagName('body')[0];
-
-            dialogback = createElement("div", {id:"dialogprefback", style:{ position:"absolute", top:"0px", left:"0px", height:getBrowserHeight()+"px", width:"100%", backgroundColor:"black", opacity:"0.5" }});
-            body.appendChild(dialogback);
-
-            var dialog = createElement("div", {id:"dialogpref", style:{ position:"absolute", top:"100px", left:"100px", height:"90px", width:"450px", border:"1px solid black", backgroundColor:"white", padding:"15px" }});
-            body.appendChild(dialog);
-
-            dialogback.addEventListener("click", function() {
-                body.removeChild(dialogback);
-                body.removeChild(dialog);
-            });
+            box = createElement("div", {id:"prefbox", style:{ position:"absolute", top:"100px", left:"100px", height:"90px", width:"450px", border:"1px solid black", backgroundColor:"white", padding:"15px" }});
+            body.appendChild(box);
 
             var msg = createElement("div", {style:{marginBottom:"15px"}}, "Google API キーを設定してください。");
-            dialog.appendChild(msg);
+            box.appendChild(msg);
 
             var textbox = createElement("input", {id:"txtGoogleApiKey", type:"textbox", size:45, value:localStorage.getItem("google_api_key_calendar")});
             var label = createElement("label", {htmlFor:textbox.id}, "Google API キー");
-            dialog.appendChild(label);
-            dialog.appendChild(textbox);
+            box.appendChild(label);
+            box.appendChild(textbox);
 
-            var btnarea = createElement("div", {id:"btnarea", style:{position:"absolute", right:"15px", bottom:"15px"}});
-            dialog.appendChild(btnarea);
+            var btnbox = createElement("box", {id:"btnbox", style:{position:"absolute", right:"15px", bottom:"15px"}});
+            box.appendChild(btnbox);
 
             var btnOK = createElement("input", {id:"btnOK", type:"button", value:"OK", style:{marginRight:"5px", width:"60px", height:"25px"}});
             btnOK.addEventListener("click", function() {
                 localStorage.setItem("google_api_key_calendar", textbox.value);
                 location.reload();
-                body.removeChild(dialogback);
-                body.removeChild(dialog);
+                body.removeChild(box);
             });
-            btnarea.appendChild(btnOK);
+            btnbox.appendChild(btnOK);
 
             var btnCancel = createElement("input", {id:"btnCancel", type:"button", value:"Cancel", style:{width:"60px", height:"25px"}});
             btnCancel.addEventListener("click", function() {
-                body.removeChild(dialogback);
-                body.removeChild(dialog);
+                body.removeChild(box);
             });
-            btnarea.appendChild(btnCancel);
+            btnbox.appendChild(btnCancel);
 
             console.log("btnPref.click");
         });
@@ -333,18 +322,4 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             td.insertBefore(span_date, span_day.nextSibling);
         }
     }
-
-    // 画面の高さを取得
-    function getBrowserHeight() {
-        if ( window.innerHeight ) {
-            return window.innerHeight;
-        }
-        else if ( document.documentElement &&
-                 document.documentElement.clientHeight != 0 ) {
-            return document.documentElement.clientHeight;
-        }
-        else if ( document.body ) {
-            return document.body.clientHeight;
-        }
-        return 0;
-    }})();
+})();
