@@ -4,7 +4,7 @@ show-holiday-in-google-calendar は、Google Calendar(webインターフェー�
 日本の祝日名の表示と、土日祝日の背景色の変更を行う。
 月ビューと２週間ビューのみの対応。
 
-![show-holiday-in-google-calendar](https://raw.github.com/wiki/draqoon/show-holiday-in-google-calendar/images/screenshot.png)
+![show-holiday-in-google-calendar](https://raw.github.com/wiki/draqoon/show-holiday-in-google-calendar/images/screenshot1.png)
 
 
 
