@@ -8,20 +8,36 @@
 // @grant        none
 // ==/UserScript==
 
-var GOOGLE_API_KEY = localStorage.getItem("google_api_key_calendar");
+var GOOGLE_API_KEY = "AIzaSyAdy6qch4NDcOBTucUjfRd5GMniF-OaAJc";
 console.log("google_api_key_calendar =", GOOGLE_API_KEY);
 var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
+
+function $$(selector){if(document.querySelectorAll) {
+        var r = document.querySelectorAll(selector);
+        if(r)
+            return Array.apply(null, r);
+    }
+    return [];
+}
+function $(selector) {
+    var r = /^#([^<>\.#\+]+)$/.exec(selector);
+    if(r) {
+        var id = r[1];
+        return document.getElementById(id);
+    }
+    else if(document.querySelector) {
+        return document.querySelector(selector);
+    }
+    return null;
+}
 
 (function() {
     'use strict';
 
     var HOLIDAY_FGCOLOR  = "red";
-    var HOLIDAY_BGCOLOR  = "mistyrose";
-    var SUNDAY_BGCOLOR   = "mistyrose";
-    var SATURDAY_BGCOLOR = "lightcyan";
 
-    function $$(selector) { return document.querySelectorAll(selector) || []; }
-    function $(id) { return document.getElementById(id); }
+    var style = createElement("style", {"type":"text/css"}, ".saturday{background-color:lightcyan} .sunday{background-color:mistyrose} .holiday{background-color:mistyrose}");
+    $("head").appendChild(style);
 
     function date2str(date) {
         var y = date.getFullYear();
@@ -33,16 +49,17 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
     }
 
     function CurrentMonth( text ) {
-        var r = /([0-9]+)å¹´ ?([0-9]+)æœˆ/.exec( text );
+        //console.log("text = "+ text);
+        var r = /([0-9]+)”N ?([0-9]+)Œ/.exec( text );
         this.year = parseInt(r[1]);
         this.month = parseInt(r[2]);
-        this.prev = new Date(this.year, this.month - 2, 1); //å‰æœˆã®åˆæ—¥
-        this.next = new Date(this.year, this.month + 1, 0); //ç¿Œæœˆã®æœ«æ—¥
+        this.prev = new Date(this.year, this.month - 2, 1); //‘OŒ‚Ì‰“ú
+        this.next = new Date(this.year, this.month + 1, 0); //—‚Œ‚Ì––“ú
         this.key = text;
     }
     CurrentMonth.prototype = {
         createDate: function(text, isCurrentMonth) {
-            var r = /([0-9]+)æœˆ 1æ—¥/.exec( text );
+            var r = /([0-9]+)Œ 1“ú/.exec( text );
             if( r ) {
                 var m = parseInt(r[1]);
                 if( !isCurrentMonth && m == 1 )
@@ -55,18 +72,18 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
                 if(r) {
                     var d = parseInt(r[1]);
                     if( isCurrentMonth ) {
-                        //å½“æœˆ
+                        //“–Œ
                         return new Date(this.year, this.month - 1, d);
                     }
                     else if( 15 < d ) {
-                        //å‰æœˆ
+                        //‘OŒ
                         if( this.month === 1 )
                             return new Date(this.year - 1, 11, d);
                         else
                             return new Date(this.year, this.month - 2, d);
                     }
                     else {
-                        //æ¬¡æœˆ
+                        //ŸŒ
                         if( this.month === 12 )
                             return new Date(this.year + 1, 0, d);
                         else
@@ -79,45 +96,45 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
     };
 
     //----------------------------------------------------------------
-    // DOMãŒå¤‰åŒ–ã—ãŸæ™‚ã«ã€ç¥æ—¥æç”»å‡¦ç†ã‚’è¡Œã†
+    // DOM‚ª•Ï‰»‚µ‚½‚ÉAj“ú•`‰æˆ—‚ğs‚¤
     //----------------------------------------------------------------
-    var _loading = false;
-    document.addEventListener("DOMSubtreeModified", function(){
-        if( _loading ) return;
-        _loading = true;
-        setTimeout(onDOMSubtreeModifiedAsync, 10);
-    }, false);
-    function onDOMSubtreeModifiedAsync() {
-        // è¡¨ç¤ºä¸­ã®å¹´æœˆ(yyyyå¹´mæœˆ)
-        var key = $("dp_0_cur").textContent;
-        currentMonth = new CurrentMonth( key );
-
-        printWeenend();
-        showHoliday();
-        addPreferenceMenuitem();
-        _loading = false;
-    }
+    var date_key;
+    var observerOptions = {attributes:false, characterData:false, childList:true, subtree:true};
+    var observer = new MutationObserver(function(data1,data2) {
+        observer.disconnect();
+        setTimeout(function(){
+            date_key = $("#dp_0_cur").textContent;
+            //console.log("date_key =", date_key);
+            printWeekend();
+            showHoliday(printHoliday);
+            showHoliday(printHolidayMini);
+            observer.observe($("body"), observerOptions);
+        }, 10);
+    });
+    observer.observe($("body"), observerOptions);
 
     //----------------------------------------------------------------
-    // Google Calendar API ã‚’åˆ©ç”¨ã—ã¦ã€ç¥æ—¥ãƒªã‚¹ãƒˆã‚’å–å¾—
+    // Google Calendar API ‚ğ—˜—p‚µ‚ÄAj“úƒŠƒXƒg‚ğæ“¾
     //----------------------------------------------------------------
-    var currentMonth;
     var holidaysCache = {};
-    function showHoliday() {
+    function showHoliday(func) {
         if( !GOOGLE_API_KEY) return;
 
-        // ç¥æ—¥ã‚’å–å¾—æ¸ˆã®æœˆã¯ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‹ã‚‰å–å¾—å¾Œã€ç¥æ—¥æç”»
-        // ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼æç”»æ™‚ã«è¤‡æ•°å›DOMãŒæ›´æ–°ã•ã‚Œã‚‹ãŸã‚ã€ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã—ãªã„ã¨ç„¡é§„ãªAPIã‚³ãƒ¼ãƒ«ãŒç™ºç”Ÿã™ã‚‹
+        var currentMonth = new CurrentMonth( date_key );
+        //console.log("currentMonth =", currentMonth);
+
+        // j“ú‚ğæ“¾Ï‚ÌŒ‚ÍƒLƒƒƒbƒVƒ…‚©‚çæ“¾ŒãAj“ú•`‰æ
+        // ƒJƒŒƒ“ƒ_[•`‰æ‚É•¡”‰ñDOM‚ªXV‚³‚ê‚é‚½‚ßAƒLƒƒƒbƒVƒ…‚µ‚È‚¢‚Æ–³‘Ê‚ÈAPIƒR[ƒ‹‚ª”­¶‚·‚é
         if( currentMonth.key in holidaysCache ) {
-            printHoliday();
+            func(currentMonth);
             return;
         }
 
-        //ç¥æ—¥ã®å–å¾—ï¼†é©ç”¨
+        //j“ú‚Ìæ“¾•“K—p
         var timeMin = date2str(currentMonth.prev) + 'T00:00:00+0900';
         var timeMax = date2str(currentMonth.next) + 'T23:59:59+0900';
         //console.log(timeMin, timeMax);
-        // Google Calendar API V3ã®URL
+        // Google Calendar API V3‚ÌURL
         var apiUrl = 'https://www.googleapis.com/calendar/v3/calendars/' +
             encodeURIComponent( CALENDAR_ID ) + '/events' +
             '?key=' + GOOGLE_API_KEY +
@@ -125,196 +142,147 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
             '&timeMax=' + encodeURIComponent( timeMax ) +
             '&fields=items(start,summary)';
 
+        console.log("apiUrl=", apiUrl);
         fetch(apiUrl, { method:'GET' }).then(function(res){
             return res.json();
         }).then(function(holidays) {
-            //å–å¾—ã—ãŸç¥æ—¥ãƒªã‚¹ãƒˆã‚’ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ä¿å­˜å¾Œã€ç¥æ—¥æç”»
+            console.log("holidays=",holidays);
+            //‚PŒ‚Q“úA‚PŒ‚R“ú‚Íj“ú‚É‚È‚ç‚È‚¢‚½‚ßA‚±‚±‚Å–³—‚â‚è’Ç‰Á‚·‚é
+            var y = 0;
+            var jan = holidays.items.some(function(item){
+                var d = new Date(item.start.date);
+                if(d.getMonth() === 0){
+                    y = d.getFullYear();
+                    return true;
+                }
+                return false;
+            });
+            if(jan){
+                //‚PŒ‚Q“úA‚PŒ‚R“ú‚ªU‘Ö‹x“ú‚É‚È‚Á‚Ä‚¢‚éê‡‚Íæ‚èœ‚­
+                holidays.items = holidays.items.filter(function(item){
+                    var d = new Date(item.start.date);
+                    return !(d.getMonth() === 0 && (d.getDate() === 2 || d.getDate() === 3));
+                });
+                //‚PŒ‚Q“úA‚PŒ‚R“ú‚ğ’Ç‰Á
+                holidays.items[holidays.items.length] = JSON.parse('{"start":{"date":"' + y + '-01-02"},"summary":"O‚ª“ú"}');
+                holidays.items[holidays.items.length] = JSON.parse('{"start":{"date":"' + y + '-01-03"},"summary":"O‚ª“ú"}');
+            }
+
+            //æ“¾‚µ‚½j“úƒŠƒXƒg‚ğƒLƒƒƒbƒVƒ…‚É•Û‘¶ŒãAj“ú•`‰æ
             holidaysCache[currentMonth.key] = holidays;
-            printHoliday();
+            func(currentMonth);
         });
     }
 
-    //åœŸæ—¥ã‚’æç”»
-    function printWeenend() {
-        //ãƒ¡ã‚¤ãƒ³ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼
-        Array.prototype.some.call($$("td.st-dtitle"), function(td) {
-            //æ—¥ä»˜ã®å–å¾—
+    //“y“ú‚ğ•`‰æ
+    function printWeekend() {
+        //ƒƒCƒ“ƒJƒŒƒ“ƒ_[
+        // •\¦’†‚Ì”NŒ(yyyy”NmŒ)
+        var currentMonth = new CurrentMonth( date_key );
+
+        $$("td.st-dtitle").some(function(td) {
+            //“ú•t‚Ìæ“¾
             var span_day = td.querySelector("span");
             var ymd = currentMonth.createDate(span_day.textContent, !td.classList.contains("st-dtitle-nonmonth"));
 
-            //æ ã®èƒŒæ™¯è‰²ã®ç€è‰²
+            //˜g‚Ì”wŒiF‚Ì’…F
             var dayOfWeek = ymd.getDay();
             if( dayOfWeek === 0 || dayOfWeek === 6 ) {
-                //å·¦ã‹ã‚‰ä½•åˆ—ç›®ã‹
+                //¶‚©‚ç‰½—ñ–Ú‚©
                 var col_index = Array.prototype.indexOf.call(td.parentNode.childNodes, td);
-                //æ ãƒ†ãƒ¼ãƒ–ãƒ«ã®ã‚»ãƒ«ã‚’æ¤œç´¢
+                //˜gƒe[ƒuƒ‹‚ÌƒZƒ‹‚ğŒŸõ
                 var xpathresult = document.evaluate("../../../../table[@class='st-bg-table']/tbody/tr/td[" + (col_index + 1) + "]", td, null, XPathResult.FIRST_ORDERED_NODE_TYPE, xpathresult);
                 var td_box = xpathresult.singleNodeValue;
-                if( dayOfWeek === 0 ) { //æ—¥æ›œæ—¥
-                    td_box.style.backgroundColor = SUNDAY_BGCOLOR;
-                    td.style.backgroundColor = SUNDAY_BGCOLOR;
+                if( dayOfWeek === 0 ) { //“ú—j“ú
+                    td_box.classList.add("sunday");
+                    td.classList.add("sunday");
                 }
-                else if( dayOfWeek === 6 ) { //åœŸæ›œæ—¥
-                    td_box.style.backgroundColor = SATURDAY_BGCOLOR;
-                    td.style.backgroundColor = SATURDAY_BGCOLOR;
+                else if( dayOfWeek === 6 ) { //“y—j“ú
+                    td_box.classList.add("saturday");
+                    td.classList.add("saturday");
                 }
             }
         });
 
-        //ãƒŸãƒ‹ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼
-        Array.prototype.some.call($$("#dp_0_tbl td.dp-cell"), function(td) {
+        //ƒ~ƒjƒJƒŒƒ“ƒ_[
+        // •\¦’†‚Ì”NŒ(yyyy”NmŒ)
+        var currentMonthMini = new CurrentMonth( $("#dp_0_cur").textContent );
+
+        $$("#dp_0_tbl td.dp-cell").some(function(td) {
             if( td.classList.contains("dp-dayh") ) return false;
 
-            //æ—¥ä»˜ã®å–å¾—
-            var ymd = currentMonth.createDate(td.textContent, !td.classList.contains("dp-offmonth") && !td.classList.contains("dp-offmonth-selected"));
+            //“ú•t‚Ìæ“¾
+            var ymd = currentMonthMini.createDate(td.textContent, !td.classList.contains("dp-offmonth") && !td.classList.contains("dp-offmonth-selected"));
             var ymdstr = date2str(ymd);
 
             var dayOfWeek = ymd.getDay();
-            if( dayOfWeek === 0 ) { //æ—¥æ›œæ—¥
-                td.style.backgroundColor = SUNDAY_BGCOLOR;
+            if( dayOfWeek === 0 ) { //“ú—j“ú
+                td.classList.add("sunday");
             }
-            else if( dayOfWeek === 6 ) { //åœŸæ›œæ—¥
-                td.style.backgroundColor = SATURDAY_BGCOLOR;
+            else if( dayOfWeek === 6 ) { //“y—j“ú
+                td.classList.add("saturday");
             }
         });
     }
 
     //----------------------------------------------------------------
-    // ç¥æ—¥ã‚’æç”»
+    // j“ú‚ğ•`‰æ
     //----------------------------------------------------------------
-    function printHoliday() {
+    function printHoliday(currentMonth) {
+        // •\¦’†‚Ì”NŒ(yyyy”NmŒ)
         var holidays = holidaysCache[currentMonth.key];
 
-        //ãƒ¡ã‚¤ãƒ³ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼
-        Array.prototype.some.call($$("td.st-dtitle"), function(td) {
-            //æ—¥ä»˜ã®å–å¾—
+        //ƒƒCƒ“ƒJƒŒƒ“ƒ_[
+        $$("td.st-dtitle").some(function(td) {
+            //“ú•t‚Ìæ“¾
             var span_day = td.querySelector("span");
             var ymd = currentMonth.createDate(span_day.textContent, !td.classList.contains("st-dtitle-nonmonth"));
             var ymdstr = date2str(ymd);
 
             if(0 < (td.querySelectorAll("span.holiday") || []).length) return false;
 
-            //ç¥æ—¥ã®è¡Œã®èƒŒæ™¯è‰²å¤‰æ›´
+            //j“ú‚Ìs‚Ì”wŒiF•ÏX
             holidays.items.forEach(function(holiday) {
                 if( holiday.start.date == ymdstr ) {
-                    //ç¥æ—¥ã®å ´åˆã¯ã€ç¥æ—¥åã‚’è¨­å®š
+                    //j“ú‚Ìê‡‚ÍAj“ú–¼‚ğİ’è
                     var span_holiday = createElement("span", {class:"holiday", style:{color:HOLIDAY_FGCOLOR, paddingLeft:"10px"}}, holiday.summary);
                     td.appendChild(span_holiday);
 
-                    //å·¦ã‹ã‚‰ä½•åˆ—ç›®ã‹
+                    //¶‚©‚ç‰½—ñ–Ú‚©
                     var col_index = Array.prototype.indexOf.call(td.parentNode.childNodes, td);
-                    //æ ãƒ†ãƒ¼ãƒ–ãƒ«ã®ã‚»ãƒ«ã‚’æ¤œç´¢
+                    //˜gƒe[ƒuƒ‹‚ÌƒZƒ‹‚ğŒŸõ
                     var xpathresult = document.evaluate("../../../../table[@class='st-bg-table']/tbody/tr/td[" + (col_index + 1) + "]", td, null, XPathResult.FIRST_ORDERED_NODE_TYPE, xpathresult);
                     var td_box = xpathresult.singleNodeValue;
-                    td_box.style.backgroundColor = HOLIDAY_BGCOLOR;
-                    td.style.backgroundColor = HOLIDAY_BGCOLOR;
-
+                    td_box.classList.add("holiday");
+                    td.classList.add("holiday");
                     return;
                 }
             });
         });
+    }
+    function printHolidayMini(currentMonthMini) {
+        // •\¦’†‚Ì”NŒ(yyyy”NmŒ)
+        var holidays = holidaysCache[currentMonthMini.key];
 
-        //ãƒŸãƒ‹ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼
-        Array.prototype.some.call($$("#dp_0_tbl td.dp-cell"), function(td) {
+        $$("#dp_0_tbl td.dp-cell").some(function(td) {
             if( td.classList.contains("dp-dayh") ) return false;
 
-            //æ—¥ä»˜ã®å–å¾—
-            var ymd = currentMonth.createDate(td.textContent, !td.classList.contains("dp-offmonth") && !td.classList.contains("dp-offmonth-selected"));
+            //“ú•t‚Ìæ“¾
+            var ymd = currentMonthMini.createDate(td.textContent, !td.classList.contains("dp-offmonth") && !td.classList.contains("dp-offmonth-selected"));
             var ymdstr = date2str(ymd);
 
-            //ç¥æ—¥ã®è¡Œã®èƒŒæ™¯è‰²å¤‰æ›´
+            //j“ú‚Ìs‚Ì”wŒiF•ÏX
             holidays.items.forEach(function(holiday) {
                 if( holiday.start.date == ymdstr ) {
                     td.title = holiday.summary;
-                    td.style.backgroundColor = HOLIDAY_BGCOLOR;
+                    td.classList.add("holiday");
                     return;
                 }
             });
         });
     }
 
-    //è¨­å®šãƒ¡ãƒ‹ãƒ¥ãƒ¼ã‚’è¿½åŠ 
-    function addPreferenceMenuitem() {
-        //ãƒ¡ãƒ‹ãƒ¥ãƒ¼ãŒæœªä½œæˆæ™‚ã¯ä½•ã‚‚ã—ãªã„
-        var menu = document.querySelector("body > div.goog-menu.goog-menu-vertical");
-        if( !menu )return;
-
-        //ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã‚¢ã‚¤ãƒ†ãƒ ã‚’è¿½åŠ æ¸ˆã®å ´åˆã¯ä½•ã‚‚ã—ãªã„
-        var z = document.getElementById(":z");
-        if(z)return;
-
-        //ä»•åˆ‡ã‚Šã‚’è¿½åŠ 
-        var separator = createElement("div", {class:"goog-menuseparator", "aria-disabled":"true", style:"-webkit-user-select:none", role:"separator", id:":y"});
-        menu.appendChild(separator);
-
-        //ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã‚¢ã‚¤ãƒ†ãƒ ã‚’è¿½åŠ 
-        var menuitemp = createElement("div", {class:"goog-menuitem", role:"menuitem", style:"-webkit-user-select: none", id:":z"});
-        menuitemp.addEventListener("mouseover", function() { menuitemp.classList.add("goog-menuitem-highlight"); });
-        menuitemp.addEventListener("mouseout", function() { menuitemp.classList.remove("goog-menuitem-highlight"); });
-        menu.appendChild(menuitemp);
-        //ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã‚¢ã‚¤ãƒ†ãƒ (ãƒ†ã‚­ã‚¹ãƒˆ)ã‚’è¿½åŠ 
-        var menuitemc = createElement("div", {class:"goog-menuitem-content", style:"-webkit-user-select: none"}, "ç¥æ—¥è¨­å®š");
-        menuitemp.appendChild(menuitemc);
-
-        menuitemp.addEventListener("click", function() {
-            //ãƒ¡ãƒ‹ãƒ¥ãƒ¼ã‚’é–‰ã˜ã‚‹
-            var menubtn = document.getElementById("mg-settings");
-            menubtn.classList.remove("goog-imageless-button-hover");
-            menubtn.classList.remove("goog-imageless-button-focused");
-            menubtn.classList.remove("goog-imageless-button-open");
-            menu.style.display = "none";
-
-            var body = document.getElementsByTagName('body')[0];
-
-            var screenSize = getScreenSize();
-            //èƒŒæ™¯ã‚’è¿½åŠ 
-            var dialogback = createElement("div", {id:"dialogprefback", style:{ position:"absolute", top:"0px", left:"0px", height:screenSize.height+"px", width:"100%", backgroundColor:"black", opacity:"0.4", "z-index":999 }});
-            body.appendChild(dialogback);
-
-            //ãƒ€ã‚¤ã‚¢ãƒ­ã‚°ã‚’è¿½åŠ 
-            var dialog = createElement("div", {id:"dialogpref", style:{ position:"absolute", height:"90px", width:"450px", top:(screenSize.height-90)/2 + "px", left:(screenSize.width-450)/2 +"px", border:"1px solid black", backgroundColor:"white", padding:"15px", "z-index":1000 }});
-            body.appendChild(dialog);
-
-            dialogback.addEventListener("click", function() {
-                closePrefence();
-            });
-
-            var msg = createElement("div", {style:{marginBottom:"15px"}}, "Google API ã‚­ãƒ¼ã‚’è¨­å®šã—ã¦ãã ã•ã„ã€‚");
-            dialog.appendChild(msg);
-
-            var api_key = localStorage.getItem("google_api_key_calendar");
-            var textbox = createElement("input", {id:"txtGoogleApiKey", type:"textbox", size:45, value:api_key ? api_key : ""});
-            var label = createElement("label", {"for":textbox.id}, "Google API ã‚­ãƒ¼");
-            dialog.appendChild(label);
-            dialog.appendChild(textbox);
-            textbox.select();textbox.focus();
-
-            var btnarea = createElement("div", {id:"btnarea", style:{position:"absolute", right:"15px", bottom:"15px"}});
-            dialog.appendChild(btnarea);
-
-            var btnOK = createElement("input", {id:"btnOK", type:"button", value:"OK", style:{marginRight:"5px", width:"60px", height:"25px"}});
-            btnOK.addEventListener("click", function() {
-                if(textbox.value) localStorage.setItem("google_api_key_calendar", textbox.value);
-                else              localStorage.removeItem("google_api_key_calendar");
-                location.reload();
-                closePrefence();
-            });
-            btnarea.appendChild(btnOK);
-
-            var btnCancel = createElement("input", {id:"btnCancel", type:"button", value:"Cancel", style:{width:"60px", height:"25px"}});
-            btnCancel.addEventListener("click", function() {
-                closePrefence();
-            });
-            btnarea.appendChild(btnCancel);
-
-            function closePrefence() {
-                body.removeChild(dialogback);
-                body.removeChild(dialog);
-            }
-        });
-    }
-
-    //ã‚¨ãƒ¬ãƒ¡ãƒ³ãƒˆã‚’ä½œæˆ
+    //ƒGƒŒƒƒ“ƒg‚ğì¬
     function createElement(tagName, attributes, textContent) {
         var element = document.createElement(tagName);
         for( var key in attributes ) {
@@ -331,7 +299,7 @@ var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
         return element;
     }
 
-    // ç”»é¢ã‚µã‚¤ã‚ºã‚’å–å¾—
+    // ‰æ–ÊƒTƒCƒY‚ğæ“¾
     function getScreenSize() {
         var h = 0;
         var w = 0;
