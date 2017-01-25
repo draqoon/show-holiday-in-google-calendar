@@ -9,10 +9,10 @@
 // ==/UserScript==
 
 var GOOGLE_API_KEY = "AIzaSyAdy6qch4NDcOBTucUjfRd5GMniF-OaAJc";
-console.log("google_api_key_calendar =", GOOGLE_API_KEY);
 var CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
 
-function $$(selector){if(document.querySelectorAll) {
+function $$(selector){
+    if(document.querySelectorAll) {
         var r = document.querySelectorAll(selector);
         if(r)
             return Array.apply(null, r);
@@ -20,15 +20,10 @@ function $$(selector){if(document.querySelectorAll) {
     return [];
 }
 function $(selector) {
-    var r = /^#([^<>\.#\+]+)$/.exec(selector);
-    if(r) {
-        var id = r[1];
-        return document.getElementById(id);
-    }
-    else if(document.querySelector) {
-        return document.querySelector(selector);
-    }
-    return null;
+    var r = /^#([^<>\.#\+ ]+)$/.exec(selector);
+    if(r) return document.getElementById(r[1]);
+    else if(document.querySelector) return document.querySelector(selector);
+    else return null;
 }
 
 (function() {
@@ -50,16 +45,16 @@ function $(selector) {
 
     function CurrentMonth( text ) {
         //console.log("text = "+ text);
-        var r = /([0-9]+)”N ?([0-9]+)Œ/.exec( text );
+        var r = /([0-9]+)å¹´ ?([0-9]+)æœˆ/.exec( text );
         this.year = parseInt(r[1]);
         this.month = parseInt(r[2]);
-        this.prev = new Date(this.year, this.month - 2, 1); //‘OŒ‚Ì‰“ú
-        this.next = new Date(this.year, this.month + 1, 0); //—‚Œ‚Ì––“ú
+        this.prev = new Date(this.year, this.month - 2, 1); //å‰æœˆã®åˆæ—¥
+        this.next = new Date(this.year, this.month + 1, 0); //ç¿Œæœˆã®æœ«æ—¥
         this.key = text;
     }
     CurrentMonth.prototype = {
         createDate: function(text, isCurrentMonth) {
-            var r = /([0-9]+)Œ 1“ú/.exec( text );
+            var r = /([0-9]+)æœˆ 1æ—¥/.exec( text );
             if( r ) {
                 var m = parseInt(r[1]);
                 if( !isCurrentMonth && m == 1 )
@@ -72,18 +67,18 @@ function $(selector) {
                 if(r) {
                     var d = parseInt(r[1]);
                     if( isCurrentMonth ) {
-                        //“–Œ
+                        //å½“æœˆ
                         return new Date(this.year, this.month - 1, d);
                     }
                     else if( 15 < d ) {
-                        //‘OŒ
+                        //å‰æœˆ
                         if( this.month === 1 )
                             return new Date(this.year - 1, 11, d);
                         else
                             return new Date(this.year, this.month - 2, d);
                     }
                     else {
-                        //ŸŒ
+                        //æ¬¡æœˆ
                         if( this.month === 12 )
                             return new Date(this.year + 1, 0, d);
                         else
@@ -96,7 +91,7 @@ function $(selector) {
     };
 
     //----------------------------------------------------------------
-    // DOM‚ª•Ï‰»‚µ‚½‚ÉAj“ú•`‰æˆ—‚ğs‚¤
+    // DOMãŒå¤‰åŒ–ã—ãŸæ™‚ã«ã€ç¥æ—¥æç”»å‡¦ç†ã‚’è¡Œã†
     //----------------------------------------------------------------
     var date_key;
     var observerOptions = {attributes:false, characterData:false, childList:true, subtree:true};
@@ -114,7 +109,7 @@ function $(selector) {
     observer.observe($("body"), observerOptions);
 
     //----------------------------------------------------------------
-    // Google Calendar API ‚ğ—˜—p‚µ‚ÄAj“úƒŠƒXƒg‚ğæ“¾
+    // Google Calendar API ã‚’åˆ©ç”¨ã—ã¦ã€ç¥æ—¥ãƒªã‚¹ãƒˆã‚’å–å¾—
     //----------------------------------------------------------------
     var holidaysCache = {};
     function showHoliday(func) {
@@ -123,18 +118,18 @@ function $(selector) {
         var currentMonth = new CurrentMonth( date_key );
         //console.log("currentMonth =", currentMonth);
 
-        // j“ú‚ğæ“¾Ï‚ÌŒ‚ÍƒLƒƒƒbƒVƒ…‚©‚çæ“¾ŒãAj“ú•`‰æ
-        // ƒJƒŒƒ“ƒ_[•`‰æ‚É•¡”‰ñDOM‚ªXV‚³‚ê‚é‚½‚ßAƒLƒƒƒbƒVƒ…‚µ‚È‚¢‚Æ–³‘Ê‚ÈAPIƒR[ƒ‹‚ª”­¶‚·‚é
+        // ç¥æ—¥ã‚’å–å¾—æ¸ˆã®æœˆã¯ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã‹ã‚‰å–å¾—å¾Œã€ç¥æ—¥æç”»
+        // ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼æç”»æ™‚ã«è¤‡æ•°å›DOMãŒæ›´æ–°ã•ã‚Œã‚‹ãŸã‚ã€ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã—ãªã„ã¨ç„¡é§„ãªAPIã‚³ãƒ¼ãƒ«ãŒç™ºç”Ÿã™ã‚‹
         if( currentMonth.key in holidaysCache ) {
             func(currentMonth);
             return;
         }
 
-        //j“ú‚Ìæ“¾•“K—p
+        //ç¥æ—¥ã®å–å¾—ï¼†é©ç”¨
         var timeMin = date2str(currentMonth.prev) + 'T00:00:00+0900';
         var timeMax = date2str(currentMonth.next) + 'T23:59:59+0900';
         //console.log(timeMin, timeMax);
-        // Google Calendar API V3‚ÌURL
+        // Google Calendar API V3ã®URL
         var apiUrl = 'https://www.googleapis.com/calendar/v3/calendars/' +
             encodeURIComponent( CALENDAR_ID ) + '/events' +
             '?key=' + GOOGLE_API_KEY +
@@ -147,7 +142,7 @@ function $(selector) {
             return res.json();
         }).then(function(holidays) {
             console.log("holidays=",holidays);
-            //‚PŒ‚Q“úA‚PŒ‚R“ú‚Íj“ú‚É‚È‚ç‚È‚¢‚½‚ßA‚±‚±‚Å–³—‚â‚è’Ç‰Á‚·‚é
+            //ï¼‘æœˆï¼’æ—¥ã€ï¼‘æœˆï¼“æ—¥ã¯ç¥æ—¥ã«ãªã‚‰ãªã„ãŸã‚ã€ã“ã“ã§ç„¡ç†ã‚„ã‚Šè¿½åŠ ã™ã‚‹
             var y = 0;
             var jan = holidays.items.some(function(item){
                 var d = new Date(item.start.date);
@@ -158,99 +153,100 @@ function $(selector) {
                 return false;
             });
             if(jan){
-                //‚PŒ‚Q“úA‚PŒ‚R“ú‚ªU‘Ö‹x“ú‚É‚È‚Á‚Ä‚¢‚éê‡‚Íæ‚èœ‚­
+                //ï¼‘æœˆï¼’æ—¥ã€ï¼‘æœˆï¼“æ—¥ãŒæŒ¯æ›¿ä¼‘æ—¥ã«ãªã£ã¦ã„ã‚‹å ´åˆã¯å–ã‚Šé™¤ã
                 holidays.items = holidays.items.filter(function(item){
                     var d = new Date(item.start.date);
                     return !(d.getMonth() === 0 && (d.getDate() === 2 || d.getDate() === 3));
                 });
-                //‚PŒ‚Q“úA‚PŒ‚R“ú‚ğ’Ç‰Á
-                holidays.items[holidays.items.length] = JSON.parse('{"start":{"date":"' + y + '-01-02"},"summary":"O‚ª“ú"}');
-                holidays.items[holidays.items.length] = JSON.parse('{"start":{"date":"' + y + '-01-03"},"summary":"O‚ª“ú"}');
+                //ï¼‘æœˆï¼’æ—¥ã€ï¼‘æœˆï¼“æ—¥ã‚’è¿½åŠ 
+                holidays.items[holidays.items.length] = JSON.parse('{"start":{"date":"' + y + '-01-02"},"summary":"ä¸‰ãŒæ—¥"}');
+                holidays.items[holidays.items.length] = JSON.parse('{"start":{"date":"' + y + '-01-03"},"summary":"ä¸‰ãŒæ—¥"}');
             }
 
-            //æ“¾‚µ‚½j“úƒŠƒXƒg‚ğƒLƒƒƒbƒVƒ…‚É•Û‘¶ŒãAj“ú•`‰æ
+            //å–å¾—ã—ãŸç¥æ—¥ãƒªã‚¹ãƒˆã‚’ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã«ä¿å­˜å¾Œã€ç¥æ—¥æç”»
             holidaysCache[currentMonth.key] = holidays;
             func(currentMonth);
         });
     }
 
-    //“y“ú‚ğ•`‰æ
+    //åœŸæ—¥ã‚’æç”»
     function printWeekend() {
-        //ƒƒCƒ“ƒJƒŒƒ“ƒ_[
-        // •\¦’†‚Ì”NŒ(yyyy”NmŒ)
+        //ãƒ¡ã‚¤ãƒ³ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼
+        // è¡¨ç¤ºä¸­ã®å¹´æœˆ(yyyyå¹´mæœˆ)
         var currentMonth = new CurrentMonth( date_key );
 
         $$("td.st-dtitle").some(function(td) {
-            //“ú•t‚Ìæ“¾
+            //æ—¥ä»˜ã®å–å¾—
             var span_day = td.querySelector("span");
             var ymd = currentMonth.createDate(span_day.textContent, !td.classList.contains("st-dtitle-nonmonth"));
 
-            //˜g‚Ì”wŒiF‚Ì’…F
+            //æ ã®èƒŒæ™¯è‰²ã®ç€è‰²
+            //abcdefgabc
             var dayOfWeek = ymd.getDay();
             if( dayOfWeek === 0 || dayOfWeek === 6 ) {
-                //¶‚©‚ç‰½—ñ–Ú‚©
+                //å·¦ã‹ã‚‰ä½•åˆ—ç›®ã‹
                 var col_index = Array.prototype.indexOf.call(td.parentNode.childNodes, td);
-                //˜gƒe[ƒuƒ‹‚ÌƒZƒ‹‚ğŒŸõ
+                //æ ãƒ†ãƒ¼ãƒ–ãƒ«ã®ã‚»ãƒ«ã‚’æ¤œç´¢
                 var xpathresult = document.evaluate("../../../../table[@class='st-bg-table']/tbody/tr/td[" + (col_index + 1) + "]", td, null, XPathResult.FIRST_ORDERED_NODE_TYPE, xpathresult);
                 var td_box = xpathresult.singleNodeValue;
-                if( dayOfWeek === 0 ) { //“ú—j“ú
+                if( dayOfWeek === 0 ) { //æ—¥æ›œæ—¥
                     td_box.classList.add("sunday");
                     td.classList.add("sunday");
                 }
-                else if( dayOfWeek === 6 ) { //“y—j“ú
+                else if( dayOfWeek === 6 ) { //åœŸæ›œæ—¥
                     td_box.classList.add("saturday");
                     td.classList.add("saturday");
                 }
             }
         });
 
-        //ƒ~ƒjƒJƒŒƒ“ƒ_[
-        // •\¦’†‚Ì”NŒ(yyyy”NmŒ)
+        //ãƒŸãƒ‹ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼
+        // è¡¨ç¤ºä¸­ã®å¹´æœˆ(yyyyå¹´mæœˆ)
         var currentMonthMini = new CurrentMonth( $("#dp_0_cur").textContent );
 
         $$("#dp_0_tbl td.dp-cell").some(function(td) {
             if( td.classList.contains("dp-dayh") ) return false;
 
-            //“ú•t‚Ìæ“¾
+            //æ—¥ä»˜ã®å–å¾—
             var ymd = currentMonthMini.createDate(td.textContent, !td.classList.contains("dp-offmonth") && !td.classList.contains("dp-offmonth-selected"));
             var ymdstr = date2str(ymd);
 
             var dayOfWeek = ymd.getDay();
-            if( dayOfWeek === 0 ) { //“ú—j“ú
+            if( dayOfWeek === 0 ) { //æ—¥æ›œæ—¥
                 td.classList.add("sunday");
             }
-            else if( dayOfWeek === 6 ) { //“y—j“ú
+            else if( dayOfWeek === 6 ) { //åœŸæ›œæ—¥
                 td.classList.add("saturday");
             }
         });
     }
 
     //----------------------------------------------------------------
-    // j“ú‚ğ•`‰æ
+    // ç¥æ—¥ã‚’æç”»
     //----------------------------------------------------------------
     function printHoliday(currentMonth) {
-        // •\¦’†‚Ì”NŒ(yyyy”NmŒ)
+        // è¡¨ç¤ºä¸­ã®å¹´æœˆ(yyyyå¹´mæœˆ)
         var holidays = holidaysCache[currentMonth.key];
 
-        //ƒƒCƒ“ƒJƒŒƒ“ƒ_[
+        //ãƒ¡ã‚¤ãƒ³ã‚«ãƒ¬ãƒ³ãƒ€ãƒ¼
         $$("td.st-dtitle").some(function(td) {
-            //“ú•t‚Ìæ“¾
+            //æ—¥ä»˜ã®å–å¾—
             var span_day = td.querySelector("span");
             var ymd = currentMonth.createDate(span_day.textContent, !td.classList.contains("st-dtitle-nonmonth"));
             var ymdstr = date2str(ymd);
 
             if(0 < (td.querySelectorAll("span.holiday") || []).length) return false;
 
-            //j“ú‚Ìs‚Ì”wŒiF•ÏX
+            //ç¥æ—¥ã®è¡Œã®èƒŒæ™¯è‰²å¤‰æ›´
             holidays.items.forEach(function(holiday) {
                 if( holiday.start.date == ymdstr ) {
-                    //j“ú‚Ìê‡‚ÍAj“ú–¼‚ğİ’è
+                    //ç¥æ—¥ã®å ´åˆã¯ã€ç¥æ—¥åã‚’è¨­å®š
                     var span_holiday = createElement("span", {class:"holiday", style:{color:HOLIDAY_FGCOLOR, paddingLeft:"10px"}}, holiday.summary);
                     td.appendChild(span_holiday);
 
-                    //¶‚©‚ç‰½—ñ–Ú‚©
+                    //å·¦ã‹ã‚‰ä½•åˆ—ç›®ã‹
                     var col_index = Array.prototype.indexOf.call(td.parentNode.childNodes, td);
-                    //˜gƒe[ƒuƒ‹‚ÌƒZƒ‹‚ğŒŸõ
+                    //æ ãƒ†ãƒ¼ãƒ–ãƒ«ã®ã‚»ãƒ«ã‚’æ¤œç´¢
                     var xpathresult = document.evaluate("../../../../table[@class='st-bg-table']/tbody/tr/td[" + (col_index + 1) + "]", td, null, XPathResult.FIRST_ORDERED_NODE_TYPE, xpathresult);
                     var td_box = xpathresult.singleNodeValue;
                     td_box.classList.add("holiday");
@@ -261,17 +257,17 @@ function $(selector) {
         });
     }
     function printHolidayMini(currentMonthMini) {
-        // •\¦’†‚Ì”NŒ(yyyy”NmŒ)
+        // è¡¨ç¤ºä¸­ã®å¹´æœˆ(yyyyå¹´mæœˆ)
         var holidays = holidaysCache[currentMonthMini.key];
 
         $$("#dp_0_tbl td.dp-cell").some(function(td) {
             if( td.classList.contains("dp-dayh") ) return false;
 
-            //“ú•t‚Ìæ“¾
+            //æ—¥ä»˜ã®å–å¾—
             var ymd = currentMonthMini.createDate(td.textContent, !td.classList.contains("dp-offmonth") && !td.classList.contains("dp-offmonth-selected"));
             var ymdstr = date2str(ymd);
 
-            //j“ú‚Ìs‚Ì”wŒiF•ÏX
+            //ç¥æ—¥ã®è¡Œã®èƒŒæ™¯è‰²å¤‰æ›´
             holidays.items.forEach(function(holiday) {
                 if( holiday.start.date == ymdstr ) {
                     td.title = holiday.summary;
@@ -282,7 +278,7 @@ function $(selector) {
         });
     }
 
-    //ƒGƒŒƒƒ“ƒg‚ğì¬
+    //ã‚¨ãƒ¬ãƒ¡ãƒ³ãƒˆã‚’ä½œæˆ
     function createElement(tagName, attributes, textContent) {
         var element = document.createElement(tagName);
         for( var key in attributes ) {
@@ -299,7 +295,7 @@ function $(selector) {
         return element;
     }
 
-    // ‰æ–ÊƒTƒCƒY‚ğæ“¾
+    // ç”»é¢ã‚µã‚¤ã‚ºã‚’å–å¾—
     function getScreenSize() {
         var h = 0;
         var w = 0;
